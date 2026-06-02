@@ -120,6 +120,10 @@ async def skip(cli, message: Message, _, chat_id):
         db[chat_id][0]["speed_path"] = None
         db[chat_id][0]["speed"] = 1.0
         
+    # ✅ FIX: Safely extract user_id and user_name (accounts for Anonymous Admins)
+    req_user_id = message.from_user.id if message.from_user else 0
+    req_user_name = message.from_user.first_name if message.from_user else "Admin"
+        
     if "live_" in queued:
         n, link = await YouTube.video(videoid, True)
         if n == 0:
@@ -133,7 +137,8 @@ async def skip(cli, message: Message, _, chat_id):
         except:
             return await message.reply_text(_["call_6"])
         button = stream_markup2(_, chat_id)
-        img = await get_thumb(videoid)
+        # ✅ FIX: Added missing arguments
+        img = await get_thumb(videoid, req_user_id, req_user_name)
         run = await message.reply_photo(
             photo=img,
             caption=_["stream_1"].format(
@@ -166,7 +171,8 @@ async def skip(cli, message: Message, _, chat_id):
         except:
             return await mystic.edit_text(_["call_6"])
         button = stream_markup(_, chat_id)
-        img = await get_thumb(videoid)
+        # ✅ FIX: Added missing arguments
+        img = await get_thumb(videoid, req_user_id, req_user_name)
         run = await message.reply_photo(
             photo=img,
             caption=_["stream_1"].format(
@@ -265,7 +271,8 @@ async def skip(cli, message: Message, _, chat_id):
             db[chat_id][0]["markup"] = "tg"
         else:
             button = stream_markup(_, chat_id)
-            img = await get_thumb(videoid)
+            # ✅ FIX: Added missing arguments
+            img = await get_thumb(videoid, req_user_id, req_user_name)
             run = await message.reply_photo(
                 photo=img,
                 caption=_["stream_1"].format(
