@@ -34,21 +34,23 @@ async def clone_broadcast_handler(client, message):
         return await message.reply_text("⚠️ **Broadcast already running!** Stop it first baby.")
 
     # --- COMMAND PARSING ---
+    content = message.text or message.caption
+
     if message.reply_to_message:
         query = message.reply_to_message.text or message.reply_to_message.caption
     else:
-        if len(message.command) < 2:
+        if not content or len(message.command) < 2:
             return await message.reply_text(
                 "<b>📣 Clone Broadcast Manager</b>\n\n"
                 "<b>Usage:</b> `/cbroadcast [Message] [Flags]`\n"
                 "<b>Flags:</b> `-owner`, `-user`, `-group`, `-all`, `-pin`"
             )
-        query = message.text.split(None, 1)[1]
+        query = content.split(None, 1)[1]
 
-    pin = "-pin" in message.text
-    send_owners = "-owner" in message.text or "-all" in message.text
-    send_users = "-user" in message.text or "-all" in message.text
-    send_groups = "-group" in message.text or "-all" in message.text
+    pin = "-pin" in content if content else False
+    send_owners = "-owner" in content or "-all" in content if content else False
+    send_users = "-user" in content or "-all" in content if content else False
+    send_groups = "-group" in content or "-all" in content if content else False
 
     if not send_users and not send_groups and not send_owners:
         send_groups = True
@@ -84,7 +86,6 @@ async def clone_broadcast_handler(client, message):
     failed_clones = 0
     total_sent = 0
     
-    # --- NEW: Total Groups & Users Count Tracking ---
     total_targetted_groups = 0
     total_targetted_users = 0
 
@@ -103,39 +104,30 @@ async def clone_broadcast_handler(client, message):
         # --- A. COLLECT TARGETS ---
         target_ids = set()
 
-        # 1. Clone Owner
         if send_owners:
             try:
                 owner = await get_clonebot_owner(bot_id)
                 if owner:
                     target_ids.add(int(owner))
-                    total_targetted_users += 1 # Owner counts as a user
-            except:
-                pass
+                    total_targetted_users += 1
+            except: pass
 
-        # 2. Clone Users
         if send_users:
             try:
                 users_list = await get_served_users_clone(bot_id)
-                count_u = len(users_list)
-                total_targetted_users += count_u
+                total_targetted_users += len(users_list)
                 for u in users_list:
                     target_ids.add(int(u['user_id']))
-            except:
-                pass
+            except: pass
 
-        # 3. Clone Groups
         if send_groups:
             try:
                 chats_list = await get_served_chats_clone(bot_id)
-                count_g = len(chats_list)
-                total_targetted_groups += count_g
+                total_targetted_groups += len(chats_list)
                 for c in chats_list:
                     target_ids.add(int(c['chat_id']))
-            except:
-                pass
+            except: pass
 
-        # Skip if empty
         if not target_ids:
             continue
 
@@ -152,27 +144,40 @@ async def clone_broadcast_handler(client, message):
                 
                 clone_sent_count = 0
                 
-                # Check if bot is alive
                 try:
                     await clone_app.get_me()
                 except (AuthKeyUnregistered, UserDeactivated):
                     failed_clones += 1
-                    continue # Token expired
+                    continue
 
                 for chat_id in target_ids:
                     if not IS_CBROADCASTING: break
                     
                     try:
+                        # 🔥 FIX: Forcing Clone App to send the replied media/text natively
                         if message.reply_to_message:
-                            sent = await message.reply_to_message.copy(chat_id)
+                            rep = message.reply_to_message
+                            if rep.photo:
+                                sent = await clone_app.send_photo(chat_id, photo=rep.photo.file_id, caption=query)
+                            elif rep.video:
+                                sent = await clone_app.send_video(chat_id, video=rep.video.file_id, caption=query)
+                            elif rep.audio:
+                                sent = await clone_app.send_audio(chat_id, audio=rep.audio.file_id, caption=query)
+                            elif rep.document:
+                                sent = await clone_app.send_document(chat_id, document=rep.document.file_id, caption=query)
+                            elif rep.animation:
+                                sent = await clone_app.send_animation(chat_id, animation=rep.animation.file_id, caption=query)
+                            elif rep.sticker:
+                                sent = await clone_app.send_sticker(chat_id, sticker=rep.sticker.file_id)
+                            else:
+                                sent = await clone_app.send_message(chat_id, text=query)
                         else:
-                            sent = await clone_app.send_message(chat_id, query)
+                            sent = await clone_app.send_message(chat_id, text=query)
                         
                         if pin and sent and str(chat_id).startswith("-100"):
                             try:
                                 await sent.pin(disable_notification=True)
-                            except:
-                                pass
+                            except: pass
                         
                         clone_sent_count += 1
                         total_sent += 1
@@ -195,7 +200,6 @@ async def clone_broadcast_handler(client, message):
     # --- FINAL REPORT ---
     IS_CBROADCASTING = False
     
-    # Adding Total Groups and Users to the final text
     await status_msg.edit_text(
         f"✅ **Broadcast Completed!**\n\n"
         f"🤖 **Total Clones:** {total_clones}\n"
