@@ -1,4 +1,5 @@
 from pyrogram import filters
+from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import (
     Message,
     InlineKeyboardMarkup,
@@ -81,9 +82,9 @@ async def autoplay_mode(client, message: Message, _, chat_id):
 async def autoplay_enable(_, query: CallbackQuery):
     chat_id = int(query.data.split("|")[1])
     
-    # Optional callback admin check verification
+    # Corrected Pyrogram v2+ admin check verification
     member = await app.get_chat_member(chat_id, query.from_user.id)
-    if member.status not in ["administrator", "creator"]:
+    if member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
         return await query.answer("❌ You must be an admin to change this setting!", show_alert=True)
 
     await add_autoplay_group(chat_id)
@@ -104,9 +105,9 @@ async def autoplay_enable(_, query: CallbackQuery):
 async def autoplay_disable(_, query: CallbackQuery):
     chat_id = int(query.data.split("|")[1])
     
-    # Optional callback admin check verification
+    # Corrected Pyrogram v2+ admin check verification
     member = await app.get_chat_member(chat_id, query.from_user.id)
-    if member.status not in ["administrator", "creator"]:
+    if member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
         return await query.answer("❌ You must be an admin to change this setting!", show_alert=True)
 
     await remove_autoplay_group(chat_id)
@@ -123,7 +124,7 @@ async def autoplay_disable(_, query: CallbackQuery):
     await query.answer("Auto Play Disabled ❌")
 
 
-@app.on_callback_query(filters.regex("AUTOPLAY_STATUS"))
+@app.on_callback_query(filters.regex("^AUTOPLAY_STATUS"))
 async def autoplay_status(_, query: CallbackQuery):
     await query.answer(
         "Auto Play Status Panel",
