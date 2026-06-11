@@ -17,7 +17,7 @@ from PritiMusic.utils.decorators import AdminRightsCheck
 from config import BANNED_USERS
 
 
-AUTOPLAY_BANNER = "https://files.catbox.moe/wktt8l.jpg"
+AUTOPLAY_BANNER = "https://files.catbox.moe/6r97s4.jpg"
 
 
 def autoplay_panel_markup(chat_id: int, enabled: bool):
