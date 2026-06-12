@@ -31,4 +31,4 @@ telegraph
 unidecode
 youtube-search
 youtube-search-python
-yt-dlp>=2024.0.0
+yt-dlp
