@@ -1,4 +1,5 @@
 import random
+import asyncio
 from pyrogram import filters, Client
 from pyrogram.types import Message
 
@@ -13,59 +14,56 @@ from PritiMusic.utils.inline import close_markup
 from PritiMusic.utils.stream.autoclear import auto_clean
 from config import BANNED_USERS
 
-@Client.on_message(
+@app.on_message(
     filters.command(["skip", "cskip", "next", "cnext"], prefixes=["/", "!", "%", ",", ".", "@", "#"])
-    & filters.group
+    & filters.group 
     & ~BANNED_USERS
 )
 @AdminRightsCheck
 async def skip(cli, message: Message, _, chat_id):
-    # Queue check karte hain
+    # Queue check
     check = db.get(chat_id)
     if not check:
         return await message.reply_text(_["queue_2"])
         
-    # Loop on/off check karte hain
+    # Loop check
     loop = await get_loop(chat_id)
     if loop != 0:
         return await message.reply_text(_["admin_8"])
 
     # Multi-skip logic (e.g., /skip 3)
+    skip_count = 1
     if len(message.command) > 1:
         state = message.text.split(None, 1)[1].strip()
         if state.isnumeric():
             state = int(state)
-            count = len(check)
-            if count > 2:
-                count = int(count - 1)
-                if 1 <= state <= count:
-                    for x in range(state - 1): # (state-1) times pop karenge
-                        try:
-                            popped = check.pop(0)
-                            if popped:
-                                await auto_clean(popped)
-                        except:
-                            pass
-                else:
-                    return await message.reply_text(_["admin_11"].format(count))
+            if 1 <= state <= len(check):
+                skip_count = state
             else:
-                return await message.reply_text(_["admin_10"])
+                return await message.reply_text(_["admin_11"].format(len(check)))
         else:
             return await message.reply_text(_["admin_11"].format(len(check)-1))
 
-    # 🟢 THE FIX: Delegate Everything to change_stream 🟢
+    # 🟢 THE FIX: Synchronized Skip & Stream Change 🟢
     try:
+        # Pehle (skip_count - 1) songs ko clean up karo
+        if skip_count > 1:
+            for x in range(skip_count - 1):
+                try:
+                    popped = check.pop(0)
+                    if popped:
+                        await auto_clean(popped)
+                except:
+                    pass
+        
         # Sahi PyTgCalls client (assistant) nikalte hain clone ke liye
         pytgcalls_client = Lucky.one
-        if chat_id in Lucky.active_clients:
-            val = Lucky.active_clients[chat_id]
-            if isinstance(val, list) and len(val) > 0:
-                pytgcalls_client = val[0]
-            elif val and not isinstance(val, list):
-                pytgcalls_client = val
+        if chat_id in Lucky.active_clients and Lucky.active_clients[chat_id]:
+            clients = Lucky.active_clients[chat_id]
+            pytgcalls_client = clients[0] if isinstance(clients, list) else clients
                 
         # Seedha change_stream call karo. 
-        # Yeh khud current track pop karega, next play karega, aur UI stream_card bhej dega!
+        # Yeh automatic pop karega, next play karega, aur UI stream_card bhej dega!
         await Lucky.change_stream(pytgcalls_client, chat_id)
         
     except Exception as e:
