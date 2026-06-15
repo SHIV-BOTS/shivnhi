@@ -33,7 +33,8 @@ async def add_autoplay_group(chat_id: int):
     if not is_on:
         # Cache aur Database dono update karein
         autoplay_cache[chat_id] = True
-        await autoplaydb.insert_one({"chat_id": chat_id})
+        # insert_one ki jagah upsert=True use kiya hai taaki duplicate entry ka error na aaye
+        await autoplaydb.update_one({"chat_id": chat_id}, {"$set": {"chat_id": chat_id}}, upsert=True)
 
 
 async def remove_autoplay_group(chat_id: int):
