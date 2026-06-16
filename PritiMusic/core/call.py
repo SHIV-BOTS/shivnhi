@@ -74,48 +74,53 @@ async def _clear_(chat_id):
 
 class Call(PyTgCalls):
     def __init__(self):
+        # Assistant 1
         self.userbot1 = Client(
-            name="MahiAss1",
+            name="LuckyAss1",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING1),
         )
         self.one = PyTgCalls(self.userbot1, cache_duration=100)
 
+        # Assistant 2
         self.two = None
         if getattr(config, "STRING2", None):
             self.userbot2 = Client(
-                name="MahiAss2",
+                name="LuckyAss2",
                 api_id=config.API_ID,
                 api_hash=config.API_HASH,
                 session_string=str(config.STRING2),
             )
             self.two = PyTgCalls(self.userbot2, cache_duration=100)
 
+        # Assistant 3
         self.three = None
         if getattr(config, "STRING3", None):
             self.userbot3 = Client(
-                name="MahiAss3",
+                name="LuckyAss3",
                 api_id=config.API_ID,
                 api_hash=config.API_HASH,
                 session_string=str(config.STRING3),
             )
             self.three = PyTgCalls(self.userbot3, cache_duration=100)
 
+        # Assistant 4
         self.four = None
         if getattr(config, "STRING4", None):
             self.userbot4 = Client(
-                name="MahiAss4",
+                name="LuckyAss4",
                 api_id=config.API_ID,
                 api_hash=config.API_HASH,
                 session_string=str(config.STRING4),
             )
             self.four = PyTgCalls(self.userbot4, cache_duration=100)
 
+        # Assistant 5
         self.five = None
         if getattr(config, "STRING5", None):
             self.userbot5 = Client(
-                name="MahiAss5",
+                name="LuckyAss5",
                 api_id=config.API_ID,
                 api_hash=config.API_HASH,
                 session_string=str(config.STRING5),
@@ -199,20 +204,47 @@ class Call(PyTgCalls):
             except: pass
 
     async def stop_stream(self, chat_id: int, assistant_type=None):
-        assistants = await self.get_active_clients(chat_id)
+        try:
+            chat_id = int(chat_id)
+        except:
+            pass
+            
         try: await _clear_(chat_id)
         except: pass
-        for assistant in assistants:
-            try: await assistant.leave_group_call(chat_id)
-            except: pass
-        if chat_id in self.active_clients: del self.active_clients[chat_id]
+        
+        all_assistants = [self.one, self.two, self.three, self.four, self.five]
+        for idx, assistant in enumerate(all_assistants):
+            if assistant:
+                try: 
+                    await assistant.leave_group_call(chat_id)
+                    LOGGER(__name__).info(f"✅ Assistant {idx+1} left VC successfully.")
+                except Exception as e: 
+                    error_msg = str(e).lower()
+                    if "not in a call" not in error_msg and "not active" not in error_msg:
+                        LOGGER(__name__).error(f"❌ Assistant {idx+1} failed to leave VC: {e}")
+                    
+        if chat_id in self.active_clients: 
+            del self.active_clients[chat_id]
 
     async def stop_stream_force(self, chat_id: int):
-        assistants = await self.get_active_clients(chat_id)
-        for assistant in assistants:
-            try: await assistant.leave_group_call(chat_id)
-            except: pass
-        if chat_id in self.active_clients: del self.active_clients[chat_id]
+        try:
+            chat_id = int(chat_id)
+        except:
+            pass
+            
+        all_assistants = [self.one, self.two, self.three, self.four, self.five]
+        for idx, assistant in enumerate(all_assistants):
+            if assistant:
+                try: 
+                    await assistant.leave_group_call(chat_id)
+                except Exception as e: 
+                    error_msg = str(e).lower()
+                    if "not in a call" not in error_msg and "not active" not in error_msg:
+                        LOGGER(__name__).error(f"❌ Assistant {idx+1} force-leave failed: {e}")
+                    
+        if chat_id in self.active_clients: 
+            del self.active_clients[chat_id]
+            
         try: await _clear_(chat_id)
         except: pass
 
@@ -322,9 +354,6 @@ class Call(PyTgCalls):
                     autoend[chat_id] = datetime.now() + timedelta(minutes=1)
             except: pass
 
-    # ==========================================
-    # 🟢 FULLY RESTORED & CRASH-PROOF CHANGE_STREAM
-    # ==========================================
     async def change_stream(self, client, chat_id):
         check = db.get(chat_id)
         popped = None
@@ -339,7 +368,6 @@ class Call(PyTgCalls):
             
             if popped: await auto_clean(popped)
             
-            # --- 🌟 ADVANCED AUTOPLAY LOGIC (ALL SINGERS) ---
             if not check:
                 from PritiMusic.utils.database.autoplay import is_autoplay_group
                 auto_on = await is_autoplay_group(chat_id)
@@ -427,7 +455,6 @@ class Call(PyTgCalls):
             except: pass
             return
 
-        # --- SAFE UI & STREAM UPDATE LOGIC ---
         if db.get(chat_id):
             queued = db[chat_id][0]["file"]
             original_chat_id = db[chat_id][0]["chat_id"]
@@ -586,16 +613,11 @@ class Call(PyTgCalls):
 
     async def start(self):
         LOGGER(__name__).info("Starting PyTgCalls Clients...\n")
-        if getattr(config, "STRING1", None):
-            await self.one.start()
-        if getattr(config, "STRING2", None):
-            await self.two.start()
-        if getattr(config, "STRING3", None):
-            await self.three.start()
-        if getattr(config, "STRING4", None):
-            await self.four.start()
-        if getattr(config, "STRING5", None):
-            await self.five.start()
+        if getattr(config, "STRING1", None): await self.one.start()
+        if getattr(config, "STRING2", None): await self.two.start()
+        if getattr(config, "STRING3", None): await self.three.start()
+        if getattr(config, "STRING4", None): await self.four.start()
+        if getattr(config, "STRING5", None): await self.five.start()
 
     async def decorators(self):
         async def stream_handler(client, update):
