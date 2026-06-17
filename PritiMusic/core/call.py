@@ -35,13 +35,12 @@ from strings import get_string
 from PritiMusic.utils.thumbnails import get_thumb
 
 # ==========================================
-# 🛑 GLOBAL ERROR LOGGER (NO SILENT FAILURES)
+# 🛑 GLOBAL ERROR HANDLER & STATE SYNC
 # ==========================================
 def handle_asyncio_exceptions(loop, context):
     msg = context.get("exception", context.get("message"))
     msg_str = str(msg).lower()
     
-    # Identify expected Telegram API state sync exceptions
     expected_sync_events = [
         "groupcall_forbidden", 
         "setvideocallstatus", 
@@ -51,10 +50,8 @@ def handle_asyncio_exceptions(loop, context):
     ]
     
     if any(err in msg_str for err in expected_sync_events):
-        # 🟢 Logger mein dikhayega par as INFO, taaki terminal red error se spam na ho
         logging.getLogger("asyncio").info(f"ℹ️ VC State Sync (Harmless): {msg}")
     else:
-        # 🔴 Baki saare genuine errors ERROR format mein dikhenge
         logging.getLogger("asyncio").error(f"❌ Unhandled Asyncio Error: {msg}")
 
 try:
@@ -215,7 +212,6 @@ class Call(PyTgCalls):
             try: await assistant.resume_stream(chat_id)
             except: pass
 
-    # 🟢 MAIN FIX HERE: Only making the *Active* Assistant leave, completely solving Clone Bot clashes!
     async def stop_stream(self, chat_id: int, assistant_type=None):
         try:
             chat_id = int(chat_id)
@@ -225,7 +221,6 @@ class Call(PyTgCalls):
         try: await _clear_(chat_id)
         except: pass
         
-        # 🟢 Sirf usi assistant ko bulao jo is chat me active hai (Clone ya Main)
         active_assistants = await self.get_active_clients(chat_id)
         for assistant in active_assistants:
             if assistant:
@@ -235,7 +230,6 @@ class Call(PyTgCalls):
                 except Exception as e: 
                     error_msg = str(e).lower()
                     ignore_list = ["no active group call", "already ended", "not in a call", "groupcall_forbidden", "groupcall_invalid"]
-                    
                     if any(ign in error_msg for ign in ignore_list):
                         LOGGER(__name__).info(f"ℹ️ Assistant State Sync: VC already closed in {chat_id}.")
                     else:
@@ -250,7 +244,6 @@ class Call(PyTgCalls):
         except:
             pass
             
-        # 🟢 Sirf usi assistant ko bulao jo is chat me active hai
         active_assistants = await self.get_active_clients(chat_id)
         for assistant in active_assistants:
             if assistant:
@@ -259,7 +252,6 @@ class Call(PyTgCalls):
                 except Exception as e: 
                     error_msg = str(e).lower()
                     ignore_list = ["no active group call", "already ended", "not in a call", "groupcall_forbidden", "groupcall_invalid"]
-                    
                     if any(ign in error_msg for ign in ignore_list):
                         LOGGER(__name__).info(f"ℹ️ Assistant State Sync: VC already closed in {chat_id} (Force).")
                     else:
@@ -350,6 +342,24 @@ class Call(PyTgCalls):
                 assistant_to_join = self.custom_assistants[user_id]
             else:
                 assistant_to_join = PyTgCalls(userbot, cache_duration=100)
+                
+                # 🟢 THE CLONE EVENT FIX: Attaching the stream listener to dynamic clones
+                @assistant_to_join.on_update()
+                async def clone_stream_handler(client, update):
+                    try:
+                        c_id = getattr(update, "chat_id", None)
+                        if not c_id: return
+                        
+                        t_name = type(update).__name__
+                        if "ChatUpdate" in t_name:
+                            status = str(getattr(update, "status", "")).upper()
+                            if "KICKED" in status or "LEFT" in status or "CLOSED" in status:
+                                await self.stop_stream(c_id)
+                        elif "StreamEnd" in t_name:
+                            await self.change_stream(client, c_id)
+                    except Exception as e:
+                        LOGGER(__name__).error(f"❌ Clone stream handler exception: {e}")
+
                 await assistant_to_join.start()
                 self.custom_assistants[user_id] = assistant_to_join
         else:
@@ -378,6 +388,10 @@ class Call(PyTgCalls):
             except: pass
 
     async def change_stream(self, client, chat_id):
+        # 🟢 ROUTING FIX: Synchronize client targeting for clones
+        active_assistants = await self.get_active_clients(chat_id)
+        client = active_assistants[0] if active_assistants else client
+
         check = db.get(chat_id)
         popped = None
         loop = await get_loop(chat_id)
@@ -395,7 +409,7 @@ class Call(PyTgCalls):
                 from PritiMusic.utils.database.autoplay import is_autoplay_group
                 auto_on = await is_autoplay_group(chat_id)
                 if auto_on and popped:
-                    LOGGER(__name__).info(f"Autoplay searching next song for {chat_id}")
+                    LOGGER(__name__).info(f"🔄 Autoplay active searching next song for {chat_id}")
                     raw_title = popped.get("title", "Unknown Title")
                     title_lower = str(raw_title).lower()
                     last_vidid = str(popped.get("vidid", ""))
@@ -443,6 +457,7 @@ class Call(PyTgCalls):
                             }
                             search_query = random.choice(lang_pools[detected_lang])
 
+                        # 🟢 AUTOPLAY SECURE RECOVERY: Gracefully recovers instead of crashing/stucking
                         recommendation = await YouTube.autoplay(last_vidid=last_vidid, title=search_query, max_duration=900)
                         if recommendation:
                             db[chat_id].append({
@@ -460,19 +475,20 @@ class Call(PyTgCalls):
                                 "played": 0,
                                 "client": popped.get("client", app)
                             })
+                        else:
+                            LOGGER(__name__).warning(f"⚠️ YouTube Autoplay returned empty choices for chat: {chat_id}. Forcing cleanup.")
                     except Exception as e:
-                        LOGGER(__name__).warning(f"Autoplay fallback failed: {e}")
+                        LOGGER(__name__).error(f"❌ Critical Autoplay exception processing track query: {e}")
 
             if not db.get(chat_id): 
                 await _clear_(chat_id)
                 if chat_id in self.active_clients: del self.active_clients[chat_id]
                 try: await client.leave_call(chat_id) 
-                except Exception as e:
-                    logging.getLogger("asyncio").info(f"ℹ️ Client leave sync: {e}")
+                except: pass
                 return
 
         except Exception as e:
-            LOGGER(__name__).error(f"Error in change_stream core: {e}")
+            LOGGER(__name__).error(f"❌ Error inside change_stream execution framework: {e}")
             await _clear_(chat_id)
             if chat_id in self.active_clients: del self.active_clients[chat_id]
             try: await client.leave_call(chat_id) 
