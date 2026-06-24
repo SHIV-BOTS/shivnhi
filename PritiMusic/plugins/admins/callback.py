@@ -102,7 +102,7 @@ async def support_page_cb(client, CallbackQuery, _):
 
     await CallbackQuery.edit_message_media(
         media=InputMediaPhoto(
-            media="https://files.catbox.moe/10zwqs.jpg", 
+            media="https://files.catbox.moe/lcw2m5.jpg", 
             caption=support_text
         ),
         reply_markup=InlineKeyboardMarkup(custom_support_buttons)
@@ -112,12 +112,12 @@ async def support_page_cb(client, CallbackQuery, _):
 @app.on_callback_query(filters.regex("gib_source"))
 async def gib_repo_callback(_, callback_query):
     try:
-        image_url = "https://files.catbox.moe/10zwqs.jpg"
+        image_url = "https://files.catbox.moe/lcw2m5.jpg"
 
         await callback_query.edit_message_media(
             media=InputMediaPhoto(
                 media=image_url, 
-                caption="REPO = ||ᴘʜᴇʟᴀ ᴅᴇᴠɪʟ ᴋᴏ ᴘᴀᴘᴀ ʙᴏʟ ᴄʜᴀʟ ʙᴏʟ😎||"
+                caption="REPO = ||ɪsᴛᴋʜᴀʀ ᴅᴇᴠɪʟ ᴋᴏ ᴘᴀᴘᴀ ʙᴏʟ ᴄʜᴀʟ ʙᴏʟ😎||"
             ),
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -234,22 +234,21 @@ async def del_back_playlist(client, CallbackQuery, _):
             await remove_autoplay_group(chat_id)
             await CallbackQuery.answer("🔴 Autoplay Disabled!", show_alert=True)
             await CallbackQuery.message.reply_text(
-                f"**🎧 𝐀𝐮𝐭𝐨𝐩𝐥𝐚𝐲 𝐒𝐲𝐬𝐭𝐞𝐦**\n\nGroup ke liye autoplay status ab **Disabled 🔴** hai.\n└ ʙʏ : {mention}", 
-                reply_markup=close_markup(_)
+                f"**🎧 𝐀ᴜᴛᴏᴘʟᴀʏ 𝐒ʏsᴛᴇᴍ**\n\nᴀᴜᴛᴏᴘʟᴀʏ ғᴏʀ ᴛʜɪs ɢʀᴏᴜᴘ ɪs ɴᴏᴡ **ᴅɪsᴀʙʟᴇᴅ 🔴**.\n└ ʙʏ : {mention}",
+                 reply_markup=close_markup(_)
             )
         else:
             await add_autoplay_group(chat_id)
             await CallbackQuery.answer("🟢 Autoplay Enabled!", show_alert=True)
             await CallbackQuery.message.reply_text(
-                f"**🎧 𝐀𝐮𝐭𝐨𝐩𝐥𝐚𝐲 𝐒𝐲𝐬𝐭𝐞𝐦**\n\nGroup ke liye autoplay status ab **Enabled 🟢** hai.\n└ ʙʏ : {mention}", 
-                reply_markup=close_markup(_)
+                f"🎧 𝐀ᴜᴛᴏᴘʟᴀʏ 𝐒ʏsᴛᴇᴍ\n\nᴀᴜᴛᴏᴘʟᴀʏ ғᴏʀ ᴛʜɪs ɢʀᴏᴜᴘ ɪs ɴᴏᴡ ᴇɴᴀʙʟᴇᴅ 🟢.\n└ ʙʏ : {mention}",
+                  reply_markup=close_markup(_)
             )
 
     elif command == "Skip" or command == "Replay":
         check = db.get(chat_id)
         if not check or len(check) == 0:
-            return await CallbackQuery.answer("Queue khali hai ya list clear ho chuki hai!", show_alert=True)
-
+            return await CallbackQuery.answer("ǫᴜᴇᴜᴇ ɪs ᴇᴍᴘᴛʏ ᴏʀ ᴛʜᴇ ᴘʟᴀʏʟɪsᴛ ʜᴀs ʙᴇᴇɴ ᴄʟᴇᴀʀᴇᴅ!", show_alert=True)
         if command == "Skip":
             txt = f"➻ sᴛʀᴇᴀᴍ sᴋɪᴩᴩᴇᴅ 🎄\n│ \n└ʙʏ : {mention} 🥀"
             try:
