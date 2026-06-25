@@ -34,7 +34,7 @@ def create_btn(text, cb=None, url=None, style=ButtonStyle.PRIMARY, no_emoji=Fals
 # Helper for the Clone button (Link Updated)
 def clone_button(style):
     return create_btn(
-        text="『 ✦ 𝐂ʟᴏηє 𝐌є ✦ 』", 
+        text="ᴄʟᴏɴᴇ-ᴍᴇ", 
         url="https://t.me/SizzuMusicBot",
         style=style
     )
@@ -81,7 +81,7 @@ def stream_markup_timer(_, chat_id, played, dur):
         ],
         # Row 3: Autoplay & Clone merged
         [
-            create_btn(text="❖ 𝐀ᴜᴛᴏ𝐏ʟᴀʏ ❖", cb=f"ADMIN Autoplay|{chat_id}", style=s_map[1]),
+            create_btn(text="ᴀᴜᴛᴏ-ᴘʟᴀʏ", cb=f"ADMIN Autoplay|{chat_id}", style=s_map[1]),
             clone_button(s_map[1])
         ],
         # Row 4: Close
