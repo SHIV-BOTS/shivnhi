@@ -3,7 +3,6 @@ import re
 import aiofiles
 import aiohttp
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
-# Nayi library yahan update kar di gayi hai
 from youtubesearchpython.__future__ import VideosSearch
 from PritiMusic import app
 
@@ -103,13 +102,12 @@ async def get_thumb(videoid, user_id=None, user_name=None):
             font_title = ImageFont.truetype("PritiMusic/assets/font.ttf", 48)
             font_small = ImageFont.truetype("PritiMusic/assets/font2.ttf", 30)
         except:
-            # Agar font na mile toh default use karega bina crash hue
             font_title = ImageFont.load_default()
             font_small = ImageFont.load_default()
 
-        # Trim title
-        if len(title) > 50:
-            title = title[:50] + "..."
+        # Trim title (Length 50 se 35 kar di gayi hai taaki bada song name achhe se set ho)
+        if len(title) > 35:
+            title = title[:35] + "..."
 
         # Center text function
         def center_text(text, y_pos, font, fill):
@@ -129,12 +127,13 @@ async def get_thumb(videoid, user_id=None, user_name=None):
         # 🎵 Title (FIXED POSITION)
         center_text(title, y + thumb_h + 20, font_title, "white")
 
-        # 📊 Stats (FIXED POSITION)
-        stats = f"YouTube : {views} | Time : {duration} | Player : @YourBot"
+        # 📊 Stats (@SizzuMusicBot update kar diya)
+        stats = f"YouTube : {views} | Time : {duration} | Player : @SizzuMusicBot"
         center_text(stats, y + thumb_h + 70, font_small, "#FFD700")
 
-        # 🔥 Watermarks
-        draw.text((30, 680), "@betabot_hub", fill="white", font=font_small)
+        # 🔥 Watermarks (@betabot_hub aur Blue color update)
+        # "#00BFFF" ek bright Light Blue color hai jo black/blur background par best dikhega
+        draw.text((30, 680), "@betabot_hub", fill="#00BFFF", font=font_small)
         draw.text((950, 30), "Dev :- @ll_Alexx_lll", fill="yellow", font=font_small)
 
         # Save Image
