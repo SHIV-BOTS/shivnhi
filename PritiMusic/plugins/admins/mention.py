@@ -2,7 +2,7 @@ import asyncio
 from pyrogram.enums import ChatType, ChatMemberStatus
 from PritiMusic import app
 from pyrogram import filters
-from PritiMusic.utils.Istkhar_ban import admin_filter
+from PritiMusic.utils.istkhar_ban import admin_filter
 
 
 
