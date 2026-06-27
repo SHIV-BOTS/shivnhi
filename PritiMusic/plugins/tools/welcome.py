@@ -1,5 +1,6 @@
 import os
 import random
+import asyncio  # 🔥 ADDED HERE - Timer ke liye
 from logging import getLogger
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from pyrogram import Client, filters, enums
@@ -16,6 +17,15 @@ welcome_state = {}  # {chat_id: True/False}
 last_welcome_msg = {}  # {chat_id: message_id}
 
 
+# 🔥 ADDED HERE - Message ko background mein delay ke baad delete karne ka function
+async def auto_delete_message(message, delay_seconds):
+    try:
+        await asyncio.sleep(delay_seconds)
+        await message.delete()
+    except Exception:
+        pass
+
+
 # --- Image Processing Functions ---
 def create_circular_pfp(pfp, size=(500, 500), brightness=1.3):
     pfp = pfp.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
@@ -29,8 +39,9 @@ def create_circular_pfp(pfp, size=(500, 500), brightness=1.3):
     return pfp
 
 def generate_welcome_image(pic_path, user_id):
-    bg_path = "assets/wel2.png"
-    font_path = "assets/font.ttf"
+    # Path updated to point exactly where images are stored
+    bg_path = "PritiMusic/assets/wel2.png"
+    font_path = "PritiMusic/assets/font.ttf"
     
     if not os.path.exists(bg_path):
         LOGGER.warning("Background image 'wel2.png' not found in 'assets' folder.")
@@ -41,8 +52,9 @@ def generate_welcome_image(pic_path, user_id):
     try:
         pfp = Image.open(pic_path).convert("RGBA")
     except Exception:
-        if os.path.exists("assets/upic.png"):
-            pfp = Image.open("assets/upic.png").convert("RGBA") 
+        # Default pic path updated
+        if os.path.exists("PritiMusic/assets/upic.png"):
+            pfp = Image.open("PritiMusic/assets/upic.png").convert("RGBA") 
         else:
             pfp = Image.new("RGBA", (500, 500), (255, 255, 255, 0)) 
         
@@ -99,6 +111,7 @@ async def greet_new_member(client, member: ChatMemberUpdated):
     user = member.new_chat_member.user
     count = await client.get_chat_members_count(chat_id)
 
+    # Agar naya banda aaya aur purana welcome msg abhi bhi hai, toh use fauran delete kar dega
     if chat_id in last_welcome_msg:
         try:
             await last_welcome_msg[chat_id].delete()
@@ -106,7 +119,8 @@ async def greet_new_member(client, member: ChatMemberUpdated):
             pass
 
     try:
-        pic_path = "assets/upic.png"
+        # Fallback user picture path updated
+        pic_path = "PritiMusic/assets/upic.png"
         if user.photo:
             try:
                 os.makedirs("downloads", exist_ok=True)
@@ -131,10 +145,8 @@ async def greet_new_member(client, member: ChatMemberUpdated):
 
 **⎉──────▢✭ 侖 ✭▢──────⎉**
 """
-        # 👇 Random Style (Color) Generator Add Kiya Hai Yahan
         styles = [ButtonStyle.PRIMARY, ButtonStyle.SUCCESS, ButtonStyle.DANGER]
 
-        # Text ekdum wahi hai jo aapne diya, bas color style random kar diya
         markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("๏ ᴠɪᴇᴡ ɴᴇᴡ ᴍᴇᴍʙᴇʀ ๏", url=f"tg://openmessage?user_id={user.id}", style=random.choice(styles))],
             [InlineKeyboardButton("✙ ᴋɪᴅɴᴀᴘ ᴍᴇ ✙", url=f"https://t.me/{bot_username}?startgroup=true", style=random.choice(styles))],
@@ -146,6 +158,9 @@ async def greet_new_member(client, member: ChatMemberUpdated):
             msg = await client.send_message(chat_id, text=caption, reply_markup=markup)
 
         last_welcome_msg[chat_id] = msg
+        
+        # 🔥 ADDED HERE - Message send hone ke baad 120 seconds (2 minute) ka delete timer laga diya
+        asyncio.create_task(auto_delete_message(msg, 120))
         
         # Files Cleanup
         if welcome_img and os.path.exists(welcome_img):
