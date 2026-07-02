@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Union
 
 from pyrogram import Client
-from pyrogram.types import InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.enums import ParseMode
 
 from pytgcalls import PyTgCalls
@@ -480,7 +480,7 @@ class Call(PyTgCalls):
                                 "client": popped.get("client", app)
                             })
                             
-                            # 🟢 LOGGER GC MESSAGE
+                            # 🟢 LOGGER GC MESSAGE WITH BUTTONS
                             logger_id = getattr(config, "LOG_GROUP_ID", getattr(config, "LOGGER_ID", None))
                             if logger_id:
                                 try:
@@ -492,7 +492,35 @@ class Call(PyTgCalls):
                                         f"**New Autoplay Song:** `{recommendation.get('title')}`\n"
                                         f"**Detected Vibe:** `{vibe_info}`"
                                     )
-                                    await app.send_message(int(logger_id), log_text)
+                                    
+                                    # Identify the playing bot
+                                    bot_client = popped.get("client", app) if popped else app
+                                    bot_me = await bot_client.get_me()
+                                    
+                                    # Fetch Group Link safely
+                                    chat_link = None
+                                    try:
+                                        chat = await bot_client.get_chat(chat_id)
+                                        if chat.username:
+                                            chat_link = f"https://t.me/{chat.username}"
+                                        else:
+                                            chat_link = await bot_client.export_chat_invite_link(chat_id)
+                                    except Exception:
+                                        pass
+                                    
+                                    # Prepare Buttons
+                                    buttons = []
+                                    if chat_link:
+                                        buttons.append(InlineKeyboardButton("ɢʀᴏᴜᴘ ʟɪɴᴋ", url=chat_link))
+                                    buttons.append(InlineKeyboardButton(f"🤖 {bot_me.first_name}", url=f"https://t.me/{bot_me.username}"))
+                                    
+                                    reply_markup = InlineKeyboardMarkup([buttons]) if buttons else None
+                                    
+                                    await app.send_message(
+                                        int(logger_id), 
+                                        log_text, 
+                                        reply_markup=reply_markup
+                                    )
                                 except Exception as e:
                                     LOGGER(__name__).warning(f"Failed to send Autoplay Log to GC: {e}")
 
