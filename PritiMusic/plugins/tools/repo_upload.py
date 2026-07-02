@@ -104,7 +104,7 @@ async def gitupload(client, message):
                 safe_rm(os.path.join(root, ".git"))
 
         user = g.get_user()
-        repo = user.create_repo(repo_name, private=is_private, description="🎉 sᴏᴜʀᴄᴇ ᴄᴏᴅᴇ ᴜᴘʟᴏᴀᴅ ʙʏ :- ɪsᴛᴋʜᴀʀ ʙᴏᴛs 🌺", auto_init=False)
+        repo = user.create_repo(repo_name, private=is_private, description="🎉 sᴏᴜʀᴄᴇ ᴄᴏᴅᴇ ᴜᴘʟᴏᴀᴅ ʙʏ :- ᴛʜᴇ sʜɪᴠ 🌺", auto_init=False)
 
 
         run(["git", "init"], cwd=final_path)
