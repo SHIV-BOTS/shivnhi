@@ -11,7 +11,7 @@ buttons = InlineKeyboardMarkup(
             styled_button(text="▢", callback_data="end_cb", style=ButtonStyle.DANGER),
         ],
         [
-            styled_button(text="『 ✦ 𝐂ʟᴏηє 𝐌є ✦ 』", url="https://t.me/SizzuMusicBot", style=ButtonStyle.SUCCESS)
+            styled_button(text="『 ✦ 𝐂ʟᴏηє 𝐌є ✦ 』", url="https://t.me/clone_MUSICrobot", style=ButtonStyle.SUCCESS)
         ],
     ]
 )
@@ -43,7 +43,7 @@ def stream_markup(chat_id):
             ],
             # Bottom Row: Clone & Close merged (Space bachane ke liye!)
             [
-                styled_button(text="『 ✦ 𝐂ʟᴏηє 𝐌є ✦ 』", url="https://t.me/SizzuMusicBot", style=ButtonStyle.SUCCESS),
+                styled_button(text="『 ✦ 𝐂ʟᴏηє 𝐌є ✦ 』", url="https://t.me/clone_MUSICrobot", style=ButtonStyle.SUCCESS),
                 styled_button(text="✯ CLOSE ✯", callback_data="close", style=ButtonStyle.DANGER)
             ]
         ]
