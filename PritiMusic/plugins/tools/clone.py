@@ -52,8 +52,8 @@ CLONE_LIMIT = 500
 FOOTER = (
     "\n\n━━━━━━━━━━━━━━━━━━\n"
     "✨ **Start customizing your bot now! join **\n"
-    "📢 Update: @iamIstkhar\n"
-    "🌚 Support: @KavyaBots"
+    "📢 Update: @betabot_hub\n"
+    "🌚 Support: @betabot_support"
 )
 
 try:
