@@ -96,13 +96,16 @@ async def support_page_cb(client, CallbackQuery, _):
             InlineKeyboardButton(text="💬 sᴜᴘᴘᴏʀᴛ", url="https://t.me/betabot_support")
         ],
         [
+            InlineKeyboardButton(text="❤️ ʙᴏᴛs", url="https://t.me/betabot_hub/6701")
+        ],
+        [
             InlineKeyboardButton(text="⌯ ʙᴀᴄᴋ ⌯", callback_data="settingsback_helper")
         ]
     ]
 
     await CallbackQuery.edit_message_media(
         media=InputMediaPhoto(
-            media="https://files.catbox.moe/lcw2m5.jpg", 
+            media="https://files.catbox.moe/4hl7n8.jpg", 
             caption=support_text
         ),
         reply_markup=InlineKeyboardMarkup(custom_support_buttons)
@@ -112,12 +115,12 @@ async def support_page_cb(client, CallbackQuery, _):
 @app.on_callback_query(filters.regex("gib_source"))
 async def gib_repo_callback(_, callback_query):
     try:
-        image_url = "https://files.catbox.moe/lcw2m5.jpg"
+        image_url = "https://files.catbox.moe/10zwqs.jpg"
 
         await callback_query.edit_message_media(
             media=InputMediaPhoto(
                 media=image_url, 
-                caption="REPO = ||ɪsᴛᴋʜᴀʀ ᴅᴇᴠɪʟ ᴋᴏ ᴘᴀᴘᴀ ʙᴏʟ ᴄʜᴀʟ ʙᴏʟ😎||"
+                caption="REPO = ||ɪsᴛᴋʜᴀʀ and  ᴅᴇᴠɪʟ ᴋᴏ ᴘᴀᴘᴀ ʙᴏʟ ᴄʜᴀʟ ʙᴏʟ😎||"
             ),
             reply_markup=InlineKeyboardMarkup(
                 [
