@@ -282,10 +282,10 @@ class Call(PyTgCalls):
         else:
             out = file_path
             
-        try: loop = asyncio.get_running_loop()
-        except RuntimeError: loop = asyncio.get_event_loop()
+        try: aloop = asyncio.get_running_loop()
+        except RuntimeError: aloop = asyncio.get_event_loop()
             
-        dur = await loop.run_in_executor(None, check_duration, out)
+        dur = await aloop.run_in_executor(None, check_duration, out)
         dur = int(dur)
         played, con_seconds = speed_converter(playing[0]["played"], speed)
         duration = seconds_to_min(dur)
@@ -389,14 +389,14 @@ class Call(PyTgCalls):
 
         check = db.get(chat_id)
         popped = None
-        loop = await get_loop(chat_id)
+        loop_count = await get_loop(chat_id)
         
         try:
-            if loop == 0:
+            if loop_count == 0:
                 if check: popped = check.pop(0)
             else:
-                loop = loop - 1
-                await set_loop(chat_id, loop)
+                loop_count = loop_count - 1
+                await set_loop(chat_id, loop_count)
             
             if popped: await auto_clean(popped)
             
@@ -404,7 +404,7 @@ class Call(PyTgCalls):
                 from PritiMusic.utils.database.autoplay import is_autoplay_group
                 auto_on = await is_autoplay_group(chat_id)
                 if auto_on and popped:
-                    LOGGER(__name__).info(f"🔄 Spotify-Style Autoplay triggered for {chat_id}")
+                    LOGGER(__name__).info(f"🔄 YT Music Autoplay triggered for {chat_id}")
                     raw_title = popped.get("title", "Unknown Title")
                     title_lower = str(raw_title).lower()
                     last_vidid = str(popped.get("vidid", ""))
@@ -442,33 +442,79 @@ class Call(PyTgCalls):
                             if detected_lang:
                                 break
 
-                        # 🟢 SPOTIFY RADIO STYLE QUERY BUILDER
-                        # Adding "audio track" avoids 1-hour compilations and forces single songs
-                        query_parts = []
-                        if detected_artist:
-                            query_parts.append(detected_artist)
-                        if detected_lang and not detected_artist:
-                            query_parts.append(detected_lang)
-                            
-                        if query_parts:
-                            if detected_mood:
-                                query_parts.append(detected_mood)
-                            # Key change: searching for "audio track" / "single" like Spotify
-                            query_parts.append("audio track")
-                            search_query = " ".join(query_parts)
-                        else:
-                            # Rely on YouTube's exact algorithm to find the literal "Next Track"
-                            search_query = f"More like {raw_title} audio track"
-
-                        # Use the algorithmic recommendation (last_vidid) as primary, with the smart search as the filter/fallback
-                        recommendation = await YouTube.autoplay(last_vidid=last_vidid, title=search_query, max_duration=600) # Restricted max_dur to 10 mins to avoid jukeboxes
+                        recommendation = None
+                        source_label = "Spotify Radio 🟢"
                         
+                        # ====================================================
+                        # 🟢 1. YT MUSIC API (PRIMARY AUTOPLAY ENGINE)
+                        # ====================================================
+                        if last_vidid:
+                            try:
+                                from ytmusicapi import YTMusic
+                                ytmusic = YTMusic()
+                                
+                                try: aloop = asyncio.get_running_loop()
+                                except RuntimeError: aloop = asyncio.get_event_loop()
+
+                                def fetch_ytm():
+                                    return ytmusic.get_watch_playlist(videoId=last_vidid, limit=7)
+                                    
+                                watch_playlist = await aloop.run_in_executor(None, fetch_ytm)
+                                tracks = watch_playlist.get("tracks", [])
+                                
+                                for track in tracks[1:]: 
+                                    nxt_vidid = track.get("videoId")
+                                    if not nxt_vidid or nxt_vidid == last_vidid: continue
+                                    
+                                    dur_str = track.get("length", "0:00")
+                                    dur_sec = 0
+                                    if dur_str and ":" in dur_str:
+                                        parts = dur_str.split(":")
+                                        try:
+                                            if len(parts) == 2: dur_sec = int(parts[0]) * 60 + int(parts[1])
+                                            elif len(parts) == 3: dur_sec = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                                        except: pass
+                                        
+                                    if 30 <= dur_sec <= 600:
+                                        recommendation = {
+                                            "title": str(track.get("title", "Unknown Title")),
+                                            "vidid": str(nxt_vidid),
+                                            "duration_min": dur_str,
+                                            "duration_sec": dur_sec
+                                        }
+                                        source_label = "YT Music Radio 🔴"
+                                        break
+                            except Exception as e:
+                                LOGGER(__name__).warning(f"🔴 YT Music fetch failed: {e}. Hopping to Search Fallback...")
+
+                        # ====================================================
+                        # 🟡 2. SPOTIFY-STYLE SEARCH (FALLBACK ENGINE)
+                        # ====================================================
+                        if not recommendation:
+                            query_parts = []
+                            if detected_artist:
+                                query_parts.append(detected_artist)
+                            if detected_lang and not detected_artist:
+                                query_parts.append(detected_lang)
+                                
+                            if query_parts:
+                                if detected_mood:
+                                    query_parts.append(detected_mood)
+                                query_parts.append("audio track")
+                                search_query = " ".join(query_parts)
+                            else:
+                                search_query = f"More like {raw_title} audio track"
+
+                            recommendation = await YouTube.autoplay(last_vidid=last_vidid, title=search_query, max_duration=600)
+                            source_label = "Algorithmic Search 🟢"
+                        
+                        # --- INJECTING RECOMMENDATION ---
                         if recommendation:
                             db[chat_id].append({
                                 "title": str(recommendation.get("title", "Unknown Title")),
                                 "dur": recommendation.get("duration_min", "0:00"),
                                 "streamtype": popped.get("streamtype", "audio") if popped else "audio",
-                                "by": "Spotify Radio 🟢",
+                                "by": source_label,
                                 "user_id": 0,
                                 "chat_id": chat_id,
                                 "file": f"vid_{recommendation.get('vidid', '')}",
@@ -483,25 +529,27 @@ class Call(PyTgCalls):
                             logger_id = getattr(config, "LOG_GROUP_ID", getattr(config, "LOGGER_ID", None))
                             if logger_id:
                                 try:
-                                    artist_or_lang = " / ".join(filter(None, [detected_artist, detected_lang]))
-                                    if not artist_or_lang:
-                                        artist_or_lang = "Algorithmic Radio"
-                                        
-                                    log_text = (
-                                        f"📻 **Spotify-Style Radio Active**\n\n"
-                                        f"**Group ID:** `{chat_id}`\n"
-                                        f"**Seed Track:** `{raw_title}`\n"
-                                        f"**Now Playing:** `{recommendation.get('title')}`\n"
-                                        f"**Artist/Genre Focus:** `{artist_or_lang}`\n"
-                                        f"**Vibe Focus:** `{detected_mood.title() if detected_mood else 'Auto-Match'}`"
-                                    )
-                                    
-                                    # ✅ FIX: Using Pyrogram app to get chat info
                                     try:
                                         chat_info = await app.get_chat(chat_id)
                                         chat_username = chat_info.username
+                                        chat_title = chat_info.title
                                     except:
                                         chat_username = None
+                                        chat_title = "Unknown Group"
+
+                                    artist_or_lang = " / ".join(filter(None, [detected_artist, detected_lang]))
+                                    if not artist_or_lang:
+                                        artist_or_lang = "Algorithmic Match" if source_label != "YT Music Radio 🔴" else "YT Music Match"
+                                        
+                                    log_text = (
+                                        f"📻 **{source_label} Active**\n\n"
+                                        f"**👥 Group Name:** {chat_title}\n"
+                                        f"**🆔 Group ID:** `{chat_id}`\n"
+                                        f"**🎧 Seed Track:** `{raw_title}`\n"
+                                        f"**🎵 Now Playing:** `{recommendation.get('title')}`\n"
+                                        f"**Focus Filter:** `{artist_or_lang}`\n"
+                                        f"**Vibe Filter:** `{detected_mood.title() if detected_mood else 'Auto-Match'}`"
+                                    )
 
                                     bot_url = f"https://t.me/{app.username}" if app.username else "https://t.me/"
                                     chat_link = f"https://t.me/{chat_username}" if chat_username else (f"https://t.me/c/{str(chat_id)[4:]}/1" if str(chat_id).startswith("-100") else bot_url)
@@ -522,7 +570,7 @@ class Call(PyTgCalls):
                                     LOGGER(__name__).warning(f"Failed to send Autoplay Log to GC: {e}")
 
                         else:
-                            LOGGER(__name__).warning(f"⚠️ YouTube Autoplay returned empty choices for chat: {chat_id}. Forcing cleanup.")
+                            LOGGER(__name__).warning(f"⚠️ Autoplay engines returned empty choices for chat: {chat_id}. Forcing cleanup.")
                     except Exception as e:
                         LOGGER(__name__).error(f"❌ Critical Autoplay exception processing track query: {e}")
 
