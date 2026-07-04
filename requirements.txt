@@ -27,5 +27,6 @@ telegraph
 unidecode
 youtube-search
 youtube-search-python
-yt-dlp>=2024.03.10  # 🟢 MUST be updated to fix the 503 YouTube error
+yt-dlp>=2024.03.10
 PyGithub==2.3.0
+ytmusicapi
